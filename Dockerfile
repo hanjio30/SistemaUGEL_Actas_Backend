@@ -1,50 +1,47 @@
-FROM php:8.3-apache
+FROM php:8.2-apache
 
-# Install system dependencies
+# Install dependencies
 RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    zip \
-    unzip \
     git \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libpq-dev
+
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql pgsql zip
+RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
 
-# Install Composer
+# Get Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first
-COPY composer.json composer.lock ./
+# Copy existing application directory contents
+COPY . /var/www/html
 
-# Install dependencies (sin ejecutar scripts todavía)
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+# Install all dependencies
+RUN composer install --optimize-autoloader --no-dev
 
-# Copy application files
-COPY . .
+# Change ownership
+RUN chown -R www-data:www-data /var/www/html
 
-# Complete the composer installation
-RUN composer dump-autoload --optimize
+# Set Apache document root
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# Enable mod_rewrite
+RUN a2enmod rewrite
 
-# Configure Apache DocumentRoot
-RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
-RUN sed -i 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf
-
+# Expose port 80
 EXPOSE 80
 
-# Start command
-CMD php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan migrate --force && \
-    apache2-foreground
+# Start services
+CMD php artisan migrate --force && apache2-foreground
