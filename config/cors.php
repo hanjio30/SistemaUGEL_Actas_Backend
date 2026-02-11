@@ -3,7 +3,9 @@
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:4321'],
+    'allowed_origins' => [
+        'https://sistema-ugel-actas-fronted.vercel.app',
+        'http://localhost:4321'],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
