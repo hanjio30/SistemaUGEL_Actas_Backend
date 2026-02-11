@@ -5,9 +5,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     libpq-dev \
     zip \
-    unzip
+    unzip \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev
 
-RUN docker-php-ext-install pdo_pgsql pgsql
+# Instalar extensiones necesarias
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_pgsql pgsql gd
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
