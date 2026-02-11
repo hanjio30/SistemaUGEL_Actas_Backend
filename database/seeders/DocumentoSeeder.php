@@ -2,22 +2,27 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
 
 class DocumentoSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        DB::table('documento')->insert([
+        $documentos = [
             ['id_documento' => 1, 'nombre_tipo' => 'Solicitud'],
             ['id_documento' => 2, 'nombre_tipo' => 'Oficio']
-        ]);
+        ];
 
-
+        foreach ($documentos as $documento) {
+            // Verificar si ya existe por id_documento
+            $existe = DB::table('documento')
+                ->where('id_documento', $documento['id_documento'])
+                ->exists();
+            
+            if (!$existe) {
+                DB::table('documento')->insert($documento);
+            }
+        }
     }
 }

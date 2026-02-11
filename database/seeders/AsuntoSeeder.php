@@ -2,17 +2,14 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
 
 class AsuntoSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
+        // Asuntos para Solicitudes
         $asuntosSolicitud = [
             'Visación de Certificados',
             'Expedición de Certificados',
@@ -29,15 +26,22 @@ class AsuntoSeeder extends Seeder
         ];
 
         foreach ($asuntosSolicitud as $index => $asunto) {
-            DB::table('asuntos')->insert([
-                'id_asunto' => $index + 1,
-                'nombre_asunto' => $asunto,
-                'documento_id' => 1, // Solicitud
-                'activo' => 1
-            ]);
+            $id = $index + 1;
+            
+            // Verificar si ya existe
+            $existe = DB::table('asuntos')->where('id_asunto', $id)->exists();
+            
+            if (!$existe) {
+                DB::table('asuntos')->insert([
+                    'id_asunto' => $id,
+                    'nombre_asunto' => $asunto,
+                    'documento_id' => 1, // Solicitud
+                    'activo' => 1
+                ]);
+            }
         }
 
-        // 3. ASUNTOS PARA OFICIOS (según tu BD)
+        // Asuntos para Oficios
         $asuntosOficio = [
             'Actas de Evaluación',
             'Actas de Subsanación',
@@ -49,14 +53,21 @@ class AsuntoSeeder extends Seeder
         ];
 
         $startId = count($asuntosSolicitud) + 1;
+        
         foreach ($asuntosOficio as $index => $asunto) {
-            DB::table('asuntos')->insert([
-                'id_asunto' => $startId + $index,
-                'nombre_asunto' => $asunto,
-                'documento_id' => 2, // Oficio
-                'activo' => 1
-            ]);
+            $id = $startId + $index;
+            
+            // Verificar si ya existe
+            $existe = DB::table('asuntos')->where('id_asunto', $id)->exists();
+            
+            if (!$existe) {
+                DB::table('asuntos')->insert([
+                    'id_asunto' => $id,
+                    'nombre_asunto' => $asunto,
+                    'documento_id' => 2, // Oficio
+                    'activo' => 1
+                ]);
+            }
         }
     }
-    
 }
