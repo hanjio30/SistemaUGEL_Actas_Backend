@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libzip-dev
 
-# Instalar extensiones
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
         pdo_pgsql \
@@ -25,11 +24,9 @@ RUN a2enmod rewrite
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
+COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
-
-COPY . .
 
 RUN chown -R www-data:www-data storage bootstrap/cache
 
