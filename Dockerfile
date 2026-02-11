@@ -1,38 +1,50 @@
-FROM php:8.2-cli
+FROM php:8.3-apache
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
+    libpq-dev \
+    libzip-dev \
     zip \
     unzip \
-    libpq-dev
-
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-install pdo pdo_pgsql pgsql zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
+
 # Set working directory
-WORKDIR /var/www
+WORKDIR /var/www/html
+
+# Copy composer files first
+COPY composer.json composer.lock ./
+
+# Install dependencies (sin ejecutar scripts todavía)
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
 
 # Copy application files
 COPY . .
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Complete the composer installation
+RUN composer dump-autoload --optimize
 
-# Generate optimized autoload files
-RUN php artisan config:cache
-RUN php artisan route:cache
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-EXPOSE 8080
+# Configure Apache DocumentRoot
+RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
+RUN sed -i 's!AllowOverride None!AllowOverride All!g' /etc/apache2/apache2.conf
 
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8080
+EXPOSE 80
+
+# Start command
+CMD php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan migrate --force && \
+    apache2-foreground
