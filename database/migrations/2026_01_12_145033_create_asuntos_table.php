@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nombre_asunto', 255);
             $table->unsignedBigInteger('documento_id');
             $table->boolean('activo')->default(true);
+             $table->timestamps(); 
             
             // Foreign key
             $table->foreign('documento_id')

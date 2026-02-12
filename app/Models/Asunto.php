@@ -8,7 +8,6 @@ class Asunto extends Model
 {
     protected $table = 'asuntos';
     protected $primaryKey = 'id_asunto';
-    public $timestamps = false;
     protected $fillable = ['nombre_asunto', 'documento_id', 'activo'];
 
     public function documento()
