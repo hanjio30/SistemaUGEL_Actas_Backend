@@ -12,7 +12,8 @@ class AuthController extends Controller
 {
     private const MAX_INTENTOS = 3;
     private const MINUTOS_BLOQUEO = 15;
-    private const SEGUNDOS_INACTIVIDAD = 2 * 60 * 60; // 2 horas
+   // private const SEGUNDOS_INACTIVIDAD = 2 * 60 * 60; // 2 horas
+   private const SEGUNDOS_INACTIVIDAD = 60; 
 
     public function login(Request $request)
     {
