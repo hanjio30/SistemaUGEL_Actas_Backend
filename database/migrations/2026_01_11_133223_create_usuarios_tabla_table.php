@@ -32,6 +32,10 @@ return new class extends Migration
             $table->string('foto_perfil', 255)->nullable();
             $table->timestamp('ultimo_acceso')->nullable();
             
+            // Control de intentos de login
+            $table->unsignedTinyInteger('intentos_fallidos')->default(0);
+            $table->timestamp('bloqueado_hasta')->nullable();
+            
             // Timestamps automáticos
             $table->timestamps();
             

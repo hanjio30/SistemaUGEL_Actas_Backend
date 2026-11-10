@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Usuario;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private const MAX_INTENTOS = 3;
+    private const MINUTOS_BLOQUEO = 15;
+    private const SEGUNDOS_INACTIVIDAD = 2 * 60 * 60; // 2 horas
+
     public function login(Request $request)
     {
         $request->validate([
@@ -25,7 +30,7 @@ class AuthController extends Controller
             ]);
         }
 
-        // ⭐ NUEVA VALIDACIÓN: Verificar si el usuario está activo usando el método del modelo
+        // Verificar si el usuario está activo
         if (!$usuario->estaActivo()) {
             return response()->json([
                 'success' => false,
@@ -33,17 +38,64 @@ class AuthController extends Controller
             ], 403);
         }
 
-        // Verificar contraseña
+        // ⭐ 1. ¿Bloqueo vigente?
+        if ($usuario->bloqueado_hasta) {
+            $hasta = Carbon::parse($usuario->bloqueado_hasta);
+
+            if (now()->lt($hasta)) {
+                $segundos = max(1, (int) ceil(now()->diffInSeconds($hasta, false)));
+                $minutos = (int) ceil($segundos / 60);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cuenta bloqueada temporalmente por intentos fallidos. Intente nuevamente en {$minutos} minuto(s).",
+                    'retry_after' => $segundos,
+                ], 429);
+            }
+
+            // El bloqueo ya venció: reiniciar
+            $usuario->forceFill([
+                'intentos_fallidos' => 0,
+                'bloqueado_hasta' => null,
+            ])->save();
+        }
+
+        // ⭐ 2. Verificar contraseña
         if (!Hash::check($request->contrasena, $usuario->contrasena)) {
+            $intentos = $usuario->intentos_fallidos + 1;
+
+            if ($intentos >= self::MAX_INTENTOS) {
+                $usuario->forceFill([
+                    'intentos_fallidos' => 0,
+                    'bloqueado_hasta' => now()->addMinutes(self::MINUTOS_BLOQUEO),
+                ])->save();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Superó los ' . self::MAX_INTENTOS . ' intentos permitidos. Su cuenta fue bloqueada por ' . self::MINUTOS_BLOQUEO . ' minutos.',
+                    'retry_after' => self::MINUTOS_BLOQUEO * 60,
+                ], 429);
+            }
+
+            $usuario->forceFill(['intentos_fallidos' => $intentos])->save();
+            $restantes = self::MAX_INTENTOS - $intentos;
+
             throw ValidationException::withMessages([
-                'usuario' => ['Las credenciales proporcionadas son incorrectas.'],
+                'usuario' => ["Credenciales incorrectas. Le quedan {$restantes} intento(s)."],
             ]);
         }
 
-        // ⭐ NUEVA FUNCIÓN: Actualizar último acceso usando el método del modelo
+        // ⭐ 3. Login correcto: reiniciar contadores
+        $usuario->forceFill([
+            'intentos_fallidos' => 0,
+            'bloqueado_hasta' => null,
+        ])->save();
+
         $usuario->actualizarUltimoAcceso();
 
-        // Guardar en sesión con todos los campos nuevos
+        // Regenerar ID de sesión (evita session fixation)
+        session()->regenerate();
+
         session([
             'usuario_id' => $usuario->id,
             'usuario_nombre' => $usuario->nombre_completo,
@@ -53,7 +105,8 @@ class AuthController extends Controller
             'usuario_dni' => $usuario->dni,
             'usuario_telefono' => $usuario->telefono,
             'usuario_foto' => $usuario->foto_perfil,
-            'usuario_es_admin' => $usuario->esAdministrador(), // Usar método del modelo
+            'usuario_es_admin' => $usuario->esAdministrador(),
+            'ultima_actividad' => time(), // ⭐ control de inactividad
         ]);
 
         return response()->json([
@@ -69,18 +122,17 @@ class AuthController extends Controller
                 'rol' => $usuario->rol,
                 'estado' => $usuario->estado,
                 'foto_perfil' => $usuario->foto_perfil,
-                'foto_perfil_url' => $usuario->foto_perfil_url, // Avatar generado automáticamente
-                'iniciales' => $usuario->iniciales, // Iniciales del nombre
+                'foto_perfil_url' => $usuario->foto_perfil_url,
+                'iniciales' => $usuario->iniciales,
                 'ultimo_acceso' => $usuario->ultimo_acceso,
                 'es_administrador' => $usuario->esAdministrador(),
-                'notificaciones_no_leidas' => $usuario->contarNoLeidas(), // Contador de notificaciones
+                'notificaciones_no_leidas' => $usuario->contarNoLeidas(),
             ]
         ], 200);
     }
 
     public function usuarioActual(Request $request)
     {
-        // Obtener usuario de la sesión
         $usuarioId = session('usuario_id');
 
         if (!$usuarioId) {
@@ -89,7 +141,20 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Cargar el usuario completo desde la base de datos
+        // ⭐ Control de inactividad (2 horas)
+        $ultima = session('ultima_actividad', time());
+
+        if (time() - $ultima > self::SEGUNDOS_INACTIVIDAD) {
+            session()->flush();
+            return response()->json([
+                'error' => 'Su sesión expiró por inactividad.',
+                'expired' => true,
+            ], 401);
+        }
+
+        // Renovar marca de actividad
+        session(['ultima_actividad' => time()]);
+
         $usuario = Usuario::find($usuarioId);
 
         if (!$usuario) {
@@ -98,7 +163,6 @@ class AuthController extends Controller
             ], 404);
         }
 
-        // Verificar si sigue activo
         if (!$usuario->estaActivo()) {
             session()->flush();
             return response()->json([
@@ -125,7 +189,6 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Limpiar sesión
         session()->flush();
 
         return response()->json([
