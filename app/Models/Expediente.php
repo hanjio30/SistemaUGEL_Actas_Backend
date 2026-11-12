@@ -50,44 +50,35 @@ class Expediente extends Model
     /**
      * Obtener el nombre del usuario actual desde diferentes fuentes
      */
-   protected static function obtenerUsuarioActual()
+    protected static function obtenerUsuarioActual()
 {
     $request = request();
 
     // 1. Body/query con varios nombres posibles
     foreach (['usuario', 'usuario_nombre', 'user', 'nombre_usuario', 'atendido_por'] as $campo) {
-        $valor = $request->input($campo);
-        if (is_string($valor) && trim($valor) !== '') {
-            return trim($valor);
+        if ($request->filled($campo)) {
+            return $request->input($campo);
         }
     }
 
     // 2. Header enviado desde el frontend
-    $header = $request->header('X-Usuario');
-    if (is_string($header) && trim($header) !== '') {
-        return trim($header);
+    if ($request->hasHeader('X-Usuario')) {
+        return $request->header('X-Usuario');
     }
 
     // 3. Sesión
     if (session()->has('usuario')) {
         $data = session('usuario');
-        $nombre = is_array($data)
+        return is_array($data)
             ? ($data['usuario'] ?? $data['nombre'] ?? null)
             : $data;
-        if (is_string($nombre) && trim($nombre) !== '') {
-            return trim($nombre);
-        }
     }
 
     // 4. Auth de Laravel
     if (auth()->check()) {
-        $nombre = auth()->user()->name ?? auth()->user()->usuario ?? null;
-        if (is_string($nombre) && trim($nombre) !== '') {
-            return trim($nombre);
-        }
+        return auth()->user()->name ?? auth()->user()->usuario ?? 'Sistema';
     }
 
-    // 5. Nunca devolver null
     return 'Sistema';
 }
 
