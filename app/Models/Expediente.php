@@ -51,34 +51,36 @@ class Expediente extends Model
      * Obtener el nombre del usuario actual desde diferentes fuentes
      */
     protected static function obtenerUsuarioActual()
-    {
-        \Log::info('obtenerUsuarioActual', [
-        'url'     => request()->fullUrl(),
-        'metodo'  => request()->method(),
-        'input'   => request()->all(),
-        'header'  => request()->header('X-Usuario'),
-        'auth'    => auth()->check(),
-        ]);
+{
+    $request = request();
 
-        // 1. Primero intentar desde el request (enviado desde el frontend)
-        if (request()->has('usuario')) {
-            return request()->input('usuario');
+    // 1. Body/query con varios nombres posibles
+    foreach (['usuario', 'usuario_nombre', 'user', 'nombre_usuario', 'atendido_por'] as $campo) {
+        if ($request->filled($campo)) {
+            return $request->input($campo);
         }
-
-        // 2. Luego intentar desde la sesión de Laravel
-        if (session()->has('usuario')) {
-            $usuarioData = session('usuario');
-            return $usuarioData['usuario'] ?? $usuarioData['nombre'] ?? null;
-        }
-
-        // 3. Si existe autenticación de Laravel
-        if (auth()->check()) {
-            return auth()->user()->name ?? auth()->user()->usuario ?? null;
-        }
-
-        // 4. Por defecto
-        return 'Sistema';
     }
+
+    // 2. Header enviado desde el frontend
+    if ($request->hasHeader('X-Usuario')) {
+        return $request->header('X-Usuario');
+    }
+
+    // 3. Sesión
+    if (session()->has('usuario')) {
+        $data = session('usuario');
+        return is_array($data)
+            ? ($data['usuario'] ?? $data['nombre'] ?? null)
+            : $data;
+    }
+
+    // 4. Auth de Laravel
+    if (auth()->check()) {
+        return auth()->user()->name ?? auth()->user()->usuario ?? 'Sistema';
+    }
+
+    return 'Sistema';
+}
 
     // Observer para registrar cambios automáticamente
     protected static function boot()
