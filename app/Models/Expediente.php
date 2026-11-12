@@ -54,29 +54,31 @@ class Expediente extends Model
 {
     $request = request();
 
-    // 1. Body/query con varios nombres posibles
     foreach (['usuario', 'usuario_nombre', 'user', 'nombre_usuario', 'atendido_por'] as $campo) {
-        if ($request->filled($campo)) {
-            return $request->input($campo);
+        $valor = $request->input($campo);
+        if (is_string($valor) && trim($valor) !== '') {
+            return trim($valor);
         }
     }
 
-    // 2. Header enviado desde el frontend
-    if ($request->hasHeader('X-Usuario')) {
-        return $request->header('X-Usuario');
+    $header = $request->header('X-Usuario');
+    if (is_string($header) && trim($header) !== '') {
+        return trim($header);
     }
 
-    // 3. Sesión
     if (session()->has('usuario')) {
         $data = session('usuario');
-        return is_array($data)
-            ? ($data['usuario'] ?? $data['nombre'] ?? null)
-            : $data;
+        $nombre = is_array($data) ? ($data['usuario'] ?? $data['nombre'] ?? null) : $data;
+        if (is_string($nombre) && trim($nombre) !== '') {
+            return trim($nombre);
+        }
     }
 
-    // 4. Auth de Laravel
     if (auth()->check()) {
-        return auth()->user()->name ?? auth()->user()->usuario ?? 'Sistema';
+        $nombre = auth()->user()->name ?? auth()->user()->usuario ?? null;
+        if (is_string($nombre) && trim($nombre) !== '') {
+            return trim($nombre);
+        }
     }
 
     return 'Sistema';
