@@ -52,6 +52,14 @@ class Expediente extends Model
      */
     protected static function obtenerUsuarioActual()
     {
+        \Log::info('obtenerUsuarioActual', [
+        'url'     => request()->fullUrl(),
+        'metodo'  => request()->method(),
+        'input'   => request()->all(),
+        'header'  => request()->header('X-Usuario'),
+        'auth'    => auth()->check(),
+        ]);
+
         // 1. Primero intentar desde el request (enviado desde el frontend)
         if (request()->has('usuario')) {
             return request()->input('usuario');
