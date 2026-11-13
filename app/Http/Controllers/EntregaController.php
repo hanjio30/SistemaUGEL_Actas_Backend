@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use App\Support\DiasHabiles;
 use App\Models\Entrega;
 use App\Models\Expediente;
 use Illuminate\Http\Request;
@@ -114,9 +114,9 @@ class EntregaController extends Controller
             }
 
             // Calcular días de atención
-            $fechaRecepcion = new \DateTime($expediente->fecha_recepcion);
-            $fechaEntrega = new \DateTime();
-            $diasAtencion = $fechaEntrega->diff($fechaRecepcion)->days;
+            // Calcular días hábiles de atención (sin sábados, domingos ni feriados)
+                $fechaEntrega = new \DateTime();
+                $diasAtencion = DiasHabiles::contar($expediente->fecha_recepcion, $fechaEntrega);
 
             // Manejar documento de autorización si existe
             $rutaDocumento = null;

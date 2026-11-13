@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\DiasHabiles;
 use App\Models\Expediente;
 use App\Models\Atencion;
 use App\Models\Entrega;
@@ -84,7 +85,7 @@ class ReporteController extends Controller
                         // Si no hay entrega, calcular días desde la recepción
                         $fechaRecepcion = new \DateTime($exp->fecha_recepcion);
                         $hoy = new \DateTime();
-                        $dias = $hoy->diff($fechaRecepcion)->days;
+                        $dias = DiasHabiles::contar($exp->fecha_recepcion);
                         $totalDias += $dias;
                         $contadorConEntrega++;
                         if ($dias <= 10) {
@@ -188,11 +189,8 @@ class ReporteController extends Controller
                 ->whereNotIn('estado', ['ENTREGADO'])
                 ->get()
                 ->map(function($exp) {
-                    // Calcular días transcurridos desde la recepción hasta hoy
-                    $fechaRecepcion = new \DateTime($exp->fecha_recepcion);
-                    $hoy = new \DateTime();
-                    $dias = $hoy->diff($fechaRecepcion)->days; // Siempre positivo
-                    
+                    $dias = DiasHabiles::contar($exp->fecha_recepcion);
+
                     return [
                         'id' => $exp->id_expediente,
                         'num_expediente' => $exp->num_expediente,
@@ -389,11 +387,8 @@ class ReporteController extends Controller
                 ->where('estado', 'OBSERVADO')
                 ->get()
                 ->map(function($exp) {
-                    // Calcular días transcurridos correctamente
-                    $fechaRecepcion = new \DateTime($exp->fecha_recepcion);
-                    $hoy = new \DateTime();
-                    $dias = $hoy->diff($fechaRecepcion)->days; // Siempre positivo
-                    
+                    $dias = DiasHabiles::contar($exp->fecha_recepcion);
+
                     return [
                         'id' => $exp->id_expediente,
                         'num_expediente' => $exp->num_expediente,
@@ -570,7 +565,7 @@ class ReporteController extends Controller
             if (isset($item['fecha_recepcion'])) {
                 $fechaRecepcion = new \DateTime($item['fecha_recepcion']);
                 $hoy = new \DateTime();
-                $diasTranscurridos = (int) $hoy->diff($fechaRecepcion)->days;
+                $diasTranscurridos = (int) $diasTranscurridos = DiasHabiles::contar($item['fecha_recepcion']);
             }
             
             $sheet->setCellValue('A' . $row, $item['num_expediente'] ?? '');
