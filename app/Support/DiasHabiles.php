@@ -11,7 +11,7 @@ class DiasHabiles
     private const FERIADOS_FIJOS = [
         '01-01', '05-01', '06-07', '06-29', '07-23', '07-28', '07-29',
         '08-06', '08-30', '10-08', '11-01', '12-08', '12-09', '12-25', '11-10',
-        '11-11',
+        '11-11'
     ];
 
     // Días no laborables o feriados extra decretados (YYYY-MM-DD).
