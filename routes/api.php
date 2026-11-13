@@ -60,6 +60,7 @@ Route::delete('/asuntos/{id}', [AsuntoController::class, 'destroy']);
 // =====================================================
 // RUTAS DE SOLICITANTES
 // =====================================================
+Route::get('/solicitantes/buscar', [ExpedienteController::class, 'buscarSolicitante']);
 Route::get('/solicitantes', [SolicitanteController::class, 'index']); // Buscar por DNI o Código
 Route::get('/solicitantes/{id}', [SolicitanteController::class, 'show']);
 Route::post('/solicitantes', [SolicitanteController::class, 'store']);

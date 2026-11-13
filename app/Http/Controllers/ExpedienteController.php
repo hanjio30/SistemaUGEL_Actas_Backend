@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use App\Models\Expediente;
+use App\Models\Solicitante;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -50,6 +51,17 @@ class ExpedienteController extends Controller
         
         $expedientes = $query->get();
         return response()->json($expedientes);
+    }
+
+    public function buscarSolicitante(Request $request)
+    {
+        $campo = strtolower($request->nombre_tipo) === 'natural' ? 'dni' : 'codigo_modular';
+        $solicitante = Solicitante::where($campo, $request->valor)->first();
+
+         if (!$solicitante) {
+            return response()->json(['error' => 'No encontrado'], 404);
+        }
+        return response()->json($solicitante);
     }
 
     public function show($id)
@@ -130,7 +142,8 @@ public function update(Request $request, $id)
 
         // Datos editables del solicitante
         'solicitante' => 'sometimes|array',
-        'solicitante.nombre_solicitante' => 'sometimes|required|string|max:255',
+        'solicitante.nombre_tipo' => 'required_with:solicitante|string|max:50',
+        'solicitante.nombre_solicitante' => 'required_with:solicitante|string|max:255',
         'solicitante.dni' => 'nullable|string|max:20',
         'solicitante.codigo_modular' => 'nullable|string|max:20',
         'solicitante.email' => 'nullable|email|max:255',
@@ -144,32 +157,43 @@ public function update(Request $request, $id)
         ], 422);
     }
 
+    $identificador = null;
+    if ($request->has('solicitante')) {
+        $s = $request->input('solicitante');
+        $campoId = strtolower($s['nombre_tipo'] ?? '') === 'natural' ? 'dni' : 'codigo_modular';
+        $identificador = $s[$campoId] ?? null;
+
+        if (!$identificador) {
+            return response()->json([
+                'error' => 'Datos inválidos',
+                'messages' => [$campoId => ['Ingrese el ' . ($campoId === 'dni' ? 'DNI' : 'código modular')]]
+            ], 422);
+        }
+    }
+
     try {
         if ($request->has('usuario')) {
             request()->merge(['usuario' => $request->usuario]);
         }
 
-        DB::transaction(function () use ($request, $expediente) {
-            $expediente->update($request->only([
-                'solicitante_id',
-                'asunto_id',
-                'fecha_recepcion',
-                'estado',
-                'observaciones'
-            ]));
+        DB::transaction(function () use ($request, $expediente, $identificador) {
+        $datos = $request->only(['asunto_id', 'fecha_recepcion', 'estado', 'observaciones']);
 
-            if ($request->has('solicitante') && $expediente->solicitante) {
-                $expediente->solicitante->update(
-                    Arr::only($request->input('solicitante'), [
-                        'nombre_solicitante',
-                        'dni',
-                        'codigo_modular',
-                        'email',
-                        'telefono',
-                    ])
-                );
-            }
-        });
+        if ($request->has('solicitante')) {
+            $s = $request->input('solicitante');
+            $campoId = strtolower($s['nombre_tipo']) === 'natural' ? 'dni' : 'codigo_modular';
+
+            // Si existe se reutiliza (sin modificarlo); si no, se crea
+            $solicitante = Solicitante::where($campoId, $identificador)->first()
+                ?? Solicitante::create(Arr::only($s, [
+                    'nombre_tipo', 'nombre_solicitante', 'dni', 'codigo_modular', 'email', 'telefono'
+                ]));
+
+            $datos['solicitante_id'] = $solicitante->id_solicitante;
+        }
+
+        $expediente->update($datos);
+    });
 
         $expediente->refresh()->load(['solicitante', 'asunto.documento']);
 
