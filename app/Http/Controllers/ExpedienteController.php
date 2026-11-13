@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use App\Models\Expediente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,7 +19,7 @@ class ExpedienteController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Expediente::with(['solicitante', 'asunto']);
+        $query = Expediente::with(['solicitante', 'asunto.documento']);
         
         // Filtrar por estado
         if ($request->has('estado')) {
@@ -52,7 +54,7 @@ class ExpedienteController extends Controller
 
     public function show($id)
     {
-        $expediente = Expediente::with(['solicitante', 'asunto'])->find($id);
+        $expediente = Expediente::with(['solicitante', 'asunto.documento'])->find($id);
         
         if (!$expediente) {
             return response()->json(['error' => 'Expediente no encontrado'], 404);
@@ -112,8 +114,8 @@ class ExpedienteController extends Controller
 
 public function update(Request $request, $id)
 {
-    $expediente = Expediente::find($id);
-    
+    $expediente = Expediente::with('solicitante')->find($id);
+
     if (!$expediente) {
         return response()->json(['error' => 'Expediente no encontrado'], 404);
     }
@@ -124,7 +126,15 @@ public function update(Request $request, $id)
         'fecha_recepcion' => 'sometimes|date',
         'estado' => 'sometimes|in:RECEPCIONADO,EN PROCESO,OBSERVADO,LISTO PARA ENTREGA,ENTREGADO',
         'observaciones' => 'nullable|string',
-        'usuario' => 'nullable|string'
+        'usuario' => 'nullable|string',
+
+        // Datos editables del solicitante
+        'solicitante' => 'sometimes|array',
+        'solicitante.nombre_solicitante' => 'sometimes|required|string|max:255',
+        'solicitante.dni' => 'nullable|string|max:20',
+        'solicitante.codigo_modular' => 'nullable|string|max:20',
+        'solicitante.email' => 'nullable|email|max:255',
+        'solicitante.telefono' => 'nullable|string|max:20',
     ]);
 
     if ($validator->fails()) {
@@ -135,21 +145,34 @@ public function update(Request $request, $id)
     }
 
     try {
-        // Guardar usuario en el request para que el observer lo capture
         if ($request->has('usuario')) {
             request()->merge(['usuario' => $request->usuario]);
         }
 
-        $expediente->update($request->only([
-            'solicitante_id',
-            'asunto_id', 
-            'fecha_recepcion',
-            'estado',
-            'observaciones'
-        ]));
-        
-        $expediente->load(['solicitante', 'asunto']);
-        
+        DB::transaction(function () use ($request, $expediente) {
+            $expediente->update($request->only([
+                'solicitante_id',
+                'asunto_id',
+                'fecha_recepcion',
+                'estado',
+                'observaciones'
+            ]));
+
+            if ($request->has('solicitante') && $expediente->solicitante) {
+                $expediente->solicitante->update(
+                    Arr::only($request->input('solicitante'), [
+                        'nombre_solicitante',
+                        'dni',
+                        'codigo_modular',
+                        'email',
+                        'telefono',
+                    ])
+                );
+            }
+        });
+
+        $expediente->refresh()->load(['solicitante', 'asunto.documento']);
+
         return response()->json([
             'message' => 'Expediente actualizado correctamente',
             'data' => $expediente
