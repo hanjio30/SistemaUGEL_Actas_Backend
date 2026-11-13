@@ -21,6 +21,26 @@ class DiasHabiles
         // '2026-12-31',
     ];
 
+    private static function pascua(int $anio): Carbon
+    {
+        $a = $anio % 19;
+        $b = intdiv($anio, 100);
+        $c = $anio % 100;
+        $d = intdiv($b, 4);
+        $e = $b % 4;
+        $f = intdiv($b + 8, 25);
+        $g = intdiv($b - $f + 1, 3);
+        $h = (19 * $a + $b - $d - $g + 15) % 30;
+        $i = intdiv($c, 4);
+        $k = $c % 4;
+        $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+        $m = intdiv($a + 11 * $h + 22 * $l, 451);
+        $mes = intdiv($h + $l - 7 * $m + 114, 31);
+        $dia = (($h + $l - 7 * $m + 114) % 31) + 1;
+
+        return Carbon::create($anio, $mes, $dia)->startOfDay();
+    }
+
     public static function esFeriado(CarbonInterface $fecha): bool
     {
         if (in_array($fecha->format('m-d'), self::FERIADOS_FIJOS, true)) {
@@ -32,8 +52,7 @@ class DiasHabiles
         }
 
         // Jueves y Viernes Santo
-        $anio = (int) $fecha->format('Y');
-        $pascua = Carbon::create($anio, 3, 21)->addDays(easter_days($anio))->startOfDay();
+        $pascua = self::pascua((int) $fecha->format('Y'));
 
         $juevesSanto = $pascua->copy()->subDays(3)->format('Y-m-d');
         $viernesSanto = $pascua->copy()->subDays(2)->format('Y-m-d');
