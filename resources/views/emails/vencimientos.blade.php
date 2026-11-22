@@ -1,254 +1,230 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expedientes Próximos a Vencer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            background-color: #f59e0b;
-            color: white;
-            padding: 20px;
-            border-radius: 8px 8px 0 0;
-            text-align: center;
-            margin: -30px -30px 30px -30px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        .alert-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        .user-info {
-            background-color: #eff6ff;
-            border-left: 4px solid #083f8f;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .info-box {
-            background-color: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .expediente-card {
-            background-color: #f9fafb;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-        }
-        .expediente-card.urgente {
-            border-color: #dc2626;
-            background-color: #fee2e2;
-        }
-        .expediente-card.advertencia {
-            border-color: #f59e0b;
-            background-color: #fef3c7;
-        }
-        .expediente-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        .expediente-num {
-            color: #083f8f;
-            font-size: 16px;
-        }
-        .dias-badge {
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .dias-badge.urgente {
-            background-color: #dc2626;
-            color: white;
-        }
-        .dias-badge.advertencia {
-            background-color: #f59e0b;
-            color: white;
-        }
-        .expediente-detail {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-        .expediente-detail strong {
-            color: #374151;
-        }
-        .observacion {
-            background-color: #ffffff;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-            font-size: 13px;
-            border-left: 3px solid #f59e0b;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 2px solid #e5e7eb;
-            text-align: center;
-            font-size: 13px;
-            color: #6b7280;
-        }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #083f8f;
-            color: white;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-        .role-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-left: 10px;
-        }
-        .role-admin {
-            background-color: #dc2626;
-            color: white;
-        }
-        .role-colaborador {
-            background-color: #0ea5d7;
-            color: white;
-        }
-        .stats {
-            background-color: #f3f4f6;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .stat-number {
-            font-size: 32px;
-            font-weight: bold;
-            color: #dc2626;
-        }
-        .stat-label {
-            font-size: 14px;
-            color: #6b7280;
-        }
-    </style>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Expedientes observados próximos a vencer</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="alert-icon">⚠️</div>
-            <h1>ALERTA: Expedientes Observados</h1>
-            <p style="margin: 5px 0 0 0; font-size: 14px;">Próximos a Vencer</p>
-        </div>
+@php
+    $lista = collect($expedientes)->sortByDesc('dias')->values();
+    $totalVencidos = $lista->where('dias', '>=', 10)->count();
+    $totalPorVencer = $lista->count() - $totalVencidos;
+    $esAdmin = in_array(strtolower($rol ?? ''), ['admin', 'administrador']);
+    $urlSistema = 'https://sistema-ugel-actas-fronted.vercel.app/';
+@endphp
+<body style="margin:0; padding:0; background-color:#eef1f6; font-family:'Segoe UI', Helvetica, Arial, sans-serif; color:#1f2937;">
 
-        <div class="user-info">
-            <strong>👤 Destinatario:</strong> {{ $usuario }}
-            @if(isset($rol))
-                <span class="role-badge {{ strtolower($rol) == 'administrador' ? 'role-admin' : 'role-colaborador' }}">
-                    {{ $rol }}
-                </span>
-            @endif
-        </div>
-
-        <p>Estimado/a <strong>{{ $usuario }}</strong>,</p>
-
-        <p>Se le notifica que existen expedientes observados que están próximos a cumplir el plazo máximo de 10 días.</p>
-
-        <div class="stats">
-            <div class="stat-number">{{ $cantidad }}</div>
-            <div class="stat-label">Expediente{{ $cantidad != 1 ? 's' : '' }} requiere{{ $cantidad != 1 ? 'n' : '' }} atención</div>
-        </div>
-
-        <div class="info-box">
-            <strong>📋 Resumen de Expedientes:</strong> A continuación se detallan los expedientes que requieren atención urgente.
-        </div>
-
-        @foreach($expedientes as $exp)
-            <div class="expediente-card {{ $exp['dias'] >= 10 ? 'urgente' : 'advertencia' }}">
-                <div class="expediente-header">
-                    <span class="expediente-num">📄 {{ $exp['num_expediente'] }}</span>
-                    <span class="dias-badge {{ $exp['dias'] >= 10 ? 'urgente' : 'advertencia' }}">
-                        {{ $exp['dias'] }}/10 días
-                    </span>
-                </div>
-                
-                @if(!empty($exp['solicitante']))
-                <div class="expediente-detail">
-                    <strong>👤 Solicitante:</strong> {{ $exp['solicitante'] }}
-                </div>
-                @endif
-                
-                @if(!empty($exp['observaciones']))
-                <div class="observacion">
-                    <strong>📝 Observación:</strong><br>
-                    {{ $exp['observaciones'] }}
-                </div>
-                @endif
-            </div>
-        @endforeach
-
-        <div class="info-box">
-            <strong>⏰ Acciones Requeridas:</strong>
-            <ul style="margin: 10px 0 0 0; padding-left: 20px;">
-                <li>Revisar cada expediente observado</li>
-                <li>Coordinar con los solicitantes para subsanar las observaciones</li>
-                @if(isset($rol) && strtolower($rol) == 'administrador')
-                <li>Corregir el estado de los expedientes una vez resueltas las observaciones</li>
-                <li>Delegar tareas a colaboradores según sea necesario</li>
-                @else
-                <li>Informar al administrador sobre el avance de las correcciones</li>
-                <li>Contactar a los solicitantes para completar documentación</li>
-                @endif
-                <li><strong>Importante:</strong> Los expedientes con 10 o más días son considerados VENCIDOS</li>
-            </ul>
-        </div>
-
-        <div style="background-color: #fee2e2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <strong style="color: #dc2626;">🚨 Recordatorio Importante:</strong>
-            <p style="margin: 10px 0 0 0; color: #7f1d1d;">
-                El plazo máximo para expedientes observados es de <strong>10 días hábiles</strong>. 
-                Una vez cumplido este plazo, se considera que el expediente está vencido y podría 
-                requerir acciones administrativas adicionales.
-            </p>
-        </div>
-
-        <div class="footer">
-            <p><strong>Sistema de Gestión de Expedientes - UGEL</strong></p>
-            <p>Notificación automática enviada el {{ $fecha }}</p>
-            <p style="margin-top: 15px; font-size: 12px;">
-                Esta notificación se envió a <strong>todos los usuarios</strong> del sistema 
-                (Administradores y Colaboradores) para mantenerlos informados sobre el 
-                estado de los expedientes observados.
-            </p>
-            <p style="font-size: 11px; color: #9ca3af; margin-top: 10px;">
-                Este es un correo automático. Por favor no responder a esta dirección.<br>
-                Para consultas, contacte al administrador del sistema.
-            </p>
-        </div>
+    {{-- Texto de vista previa (se ve en la bandeja de entrada) --}}
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:#eef1f6;">
+        {{ $cantidad }} expediente(s) observado(s) requieren atención antes de cumplir el plazo de 10 días hábiles.
     </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef1f6;">
+        <tr>
+            <td align="center" style="padding:32px 16px;">
+
+                <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:640px;">
+
+                    {{-- Encabezado institucional --}}
+                    <tr>
+                        <td style="background-color:#083f8f; padding:28px 36px; border-radius:10px 10px 0 0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td style="font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#b6c8ea; font-weight:600;">
+                                        UGEL &middot; Sistema de Gestión de Expedientes
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-top:10px; font-size:24px; line-height:1.3; font-weight:700; color:#ffffff;">
+                                        Alerta de plazos: expedientes observados
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background-color:#f59e0b; height:4px; line-height:4px; font-size:0;">&nbsp;</td>
+                    </tr>
+
+                    {{-- Cuerpo --}}
+                    <tr>
+                        <td style="background-color:#ffffff; padding:36px;">
+
+                            <p style="margin:0 0 6px 0; font-size:16px; color:#111827;">
+                                Estimado/a <strong>{{ $usuario }}</strong>,
+                            </p>
+                            <p style="margin:0 0 4px 0; font-size:12px; color:#6b7280;">
+                                {{ $esAdmin ? 'Administrador' : 'Colaborador' }} &middot; {{ $fecha }}
+                            </p>
+
+                            <p style="margin:22px 0 28px 0; font-size:15px; line-height:1.7; color:#374151;">
+                                Le informamos que hay expedientes en estado <strong>OBSERVADO</strong> que están
+                                próximos a cumplir, o ya cumplieron, el plazo máximo de
+                                <strong>10 días hábiles</strong>. Se requiere su atención.
+                            </p>
+
+                            {{-- Resumen --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:32px;">
+                                <tr>
+                                    <td width="33%" align="center" style="background-color:#f3f6fb; border:1px solid #dbe3f0; border-radius:8px; padding:18px 8px;">
+                                        <div style="font-size:30px; font-weight:700; color:#083f8f; line-height:1;">{{ $cantidad }}</div>
+                                        <div style="font-size:12px; color:#6b7280; margin-top:6px; text-transform:uppercase; letter-spacing:0.5px;">Total</div>
+                                    </td>
+                                    <td width="2%">&nbsp;</td>
+                                    <td width="30%" align="center" style="background-color:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:18px 8px;">
+                                        <div style="font-size:30px; font-weight:700; color:#b45309; line-height:1;">{{ $totalPorVencer }}</div>
+                                        <div style="font-size:12px; color:#92400e; margin-top:6px; text-transform:uppercase; letter-spacing:0.5px;">Por vencer</div>
+                                    </td>
+                                    <td width="2%">&nbsp;</td>
+                                    <td width="30%" align="center" style="background-color:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:18px 8px;">
+                                        <div style="font-size:30px; font-weight:700; color:#b91c1c; line-height:1;">{{ $totalVencidos }}</div>
+                                        <div style="font-size:12px; color:#991b1b; margin-top:6px; text-transform:uppercase; letter-spacing:0.5px;">Vencidos</div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            {{-- Detalle --}}
+                            <p style="margin:0 0 12px 0; font-size:13px; font-weight:700; color:#083f8f; text-transform:uppercase; letter-spacing:1px;">
+                                Detalle de expedientes
+                            </p>
+
+                            @foreach($lista as $exp)
+                                @php
+                                    $dias = (int) ($exp['dias'] ?? 0);
+                                    $vencido = $dias >= 10;
+                                    $color = $vencido ? '#b91c1c' : '#b45309';
+                                    $fondoBadge = $vencido ? '#fee2e2' : '#fef3c7';
+                                    $bordeIzq = $vencido ? '#dc2626' : '#f59e0b';
+                                    $porcentaje = min(100, $dias * 10);
+                                @endphp
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:14px; border:1px solid #e5e7eb; border-left:4px solid {{ $bordeIzq }}; border-radius:6px;">
+                                    <tr>
+                                        <td style="padding:16px 18px;">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                                <tr>
+                                                    <td style="font-size:16px; font-weight:700; color:#083f8f;">
+                                                        N.° {{ $exp['num_expediente'] }}
+                                                    </td>
+                                                    <td align="right">
+                                                        <span style="display:inline-block; background-color:{{ $fondoBadge }}; color:{{ $color }}; font-size:12px; font-weight:700; padding:5px 12px; border-radius:20px;">
+                                                            {{ $vencido ? 'VENCIDO' : 'POR VENCER' }} &middot; {{ $dias }}/10 días
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            {{-- Barra de progreso del plazo --}}
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:12px 0;">
+                                                <tr>
+                                                    <td style="background-color:#e5e7eb; border-radius:4px; height:6px; line-height:6px; font-size:0;">
+                                                        <table role="presentation" width="{{ $porcentaje }}%" cellpadding="0" cellspacing="0" border="0">
+                                                            <tr>
+                                                                <td style="background-color:{{ $bordeIzq }}; border-radius:4px; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                            </table>
+
+                                            @if(!empty($exp['solicitante']))
+                                                <p style="margin:0 0 6px 0; font-size:14px; color:#374151;">
+                                                    <span style="color:#6b7280;">Solicitante:</span>
+                                                    <strong>{{ $exp['solicitante'] }}</strong>
+                                                </p>
+                                            @endif
+
+                                            @if(!empty($exp['observaciones']))
+                                                <p style="margin:0; font-size:13px; line-height:1.6; color:#4b5563; background-color:#f9fafb; padding:10px 12px; border-radius:4px;">
+                                                    <span style="color:#6b7280;">Observación:</span>
+                                                    {{ $exp['observaciones'] }}
+                                                </p>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                </table>
+                            @endforeach
+
+                            {{-- Acciones requeridas --}}
+                            <p style="margin:30px 0 10px 0; font-size:13px; font-weight:700; color:#083f8f; text-transform:uppercase; letter-spacing:1px;">
+                                Acciones requeridas
+                            </p>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px; line-height:1.7; color:#374151;">
+                                <tr>
+                                    <td width="24" valign="top" style="color:#083f8f; font-weight:700;">1.</td>
+                                    <td style="padding-bottom:6px;">Revisar cada expediente observado y su detalle.</td>
+                                </tr>
+                                <tr>
+                                    <td valign="top" style="color:#083f8f; font-weight:700;">2.</td>
+                                    <td style="padding-bottom:6px;">Coordinar con los solicitantes para subsanar las observaciones.</td>
+                                </tr>
+                                @if($esAdmin)
+                                    <tr>
+                                        <td valign="top" style="color:#083f8f; font-weight:700;">3.</td>
+                                        <td style="padding-bottom:6px;">Corregir el estado de los expedientes una vez resueltas las observaciones.</td>
+                                    </tr>
+                                    <tr>
+                                        <td valign="top" style="color:#083f8f; font-weight:700;">4.</td>
+                                        <td>Delegar tareas a los colaboradores según sea necesario.</td>
+                                    </tr>
+                                @else
+                                    <tr>
+                                        <td valign="top" style="color:#083f8f; font-weight:700;">3.</td>
+                                        <td style="padding-bottom:6px;">Contactar a los solicitantes para completar la documentación.</td>
+                                    </tr>
+                                    <tr>
+                                        <td valign="top" style="color:#083f8f; font-weight:700;">4.</td>
+                                        <td>Informar al administrador sobre el avance de las correcciones.</td>
+                                    </tr>
+                                @endif
+                            </table>
+
+                            {{-- Botón --}}
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:34px auto 8px auto;">
+                                <tr>
+                                    <td align="center" style="background-color:#083f8f; border-radius:6px;">
+                                        <a href="{{ $urlSistema }}" target="_blank" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:700; color:#ffffff; text-decoration:none;">
+                                            Ir al sistema
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            {{-- Aviso de plazo --}}
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
+                                <tr>
+                                    <td style="background-color:#fef2f2; border-left:4px solid #dc2626; border-radius:4px; padding:14px 18px; font-size:13px; line-height:1.7; color:#7f1d1d;">
+                                        <strong>Recordatorio:</strong> el plazo máximo para expedientes observados es de
+                                        <strong>10 días hábiles</strong>. Cumplido ese plazo, el expediente se considera
+                                        vencido y podría requerir acciones administrativas adicionales.
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+
+                    {{-- Pie --}}
+                    <tr>
+                        <td style="background-color:#f8fafc; border-top:1px solid #e5e7eb; padding:24px 36px; border-radius:0 0 10px 10px; text-align:center;">
+                            <p style="margin:0 0 6px 0; font-size:13px; font-weight:700; color:#083f8f;">
+                                Sistema de Gestión de Expedientes &ndash; UGEL
+                            </p>
+                            <p style="margin:0 0 10px 0; font-size:12px; color:#6b7280;">
+                                Notificación automática generada el {{ $fecha }}
+                            </p>
+                            <p style="margin:0; font-size:11px; line-height:1.6; color:#9ca3af;">
+                                Este es un mensaje automático, por favor no responda a esta dirección.<br>
+                                Para consultas, comuníquese con el administrador del sistema.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
 </body>
 </html>
