@@ -6,6 +6,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use App\Models\Expediente;
 use App\Models\Solicitante;
+use App\Support\DiasHabiles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
@@ -323,9 +324,9 @@ public function update(Request $request, $id)
 
             foreach ($expedientes as $exp) {
                 try {
-                    // Calcular días transcurridos
+                    // Calcular días hábiles transcurridos (sin sábados, domingos ni feriados)
                     $fechaRecepcion = new \DateTime($exp->fecha_recepcion);
-                    $diasTranscurridos = $hoy->diff($fechaRecepcion)->days;
+                    $diasTranscurridos = DiasHabiles::contar($exp->fecha_recepcion);
 
                     // DNI o Código Modular - Verificar que solicitante existe
                     $identificacion = 'Sin identificación';
@@ -412,10 +413,8 @@ public function update(Request $request, $id)
             $sheet->setCellValue('B' . $row, $expedientes->count());
             
             $row++;
-            $proximosVencer = $expedientes->filter(function($exp) use ($hoy) {
-                $fechaRecepcion = new \DateTime($exp->fecha_recepcion);
-                $dias = $hoy->diff($fechaRecepcion)->days;
-                return $dias >= 8;
+            $proximosVencer = $expedientes->filter(function($exp) {
+                return DiasHabiles::contar($exp->fecha_recepcion) >= 8;
             })->count();
             
             $sheet->setCellValue('A' . $row, 'Próximos a vencer (8+ días):');
